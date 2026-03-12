@@ -97,8 +97,17 @@ document.addEventListener('DOMContentLoaded', () => {
             creationHours: { adult: 0, child: 0 },
             admissionMults: { am: 1.0, pm: 1.0, night: 1.0 },
             hvac: { cooler: 0, heater: 0 },
-            equipment: {} // { name_segment: qty }
+            equipment: {}, // { name_segment: qty }
+            overrides: {}  // { fieldName: value }
         };
+    }
+    
+    function getPrice(roomName, fieldName, defaultValue) {
+        const config = roomConfigs[roomName];
+        if (config && config.overrides && config.overrides[fieldName] !== undefined) {
+            return config.overrides[fieldName];
+        }
+        return defaultValue;
     }
 
     const roomBtns = document.querySelectorAll('.sim-room-btn');
@@ -214,9 +223,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     ` : ''}
 
-                    <div>
-                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">${currentData.hasHvac ? '4' : '3'}. 附属設備・備品の選択</h3>
-                        ${renderEquipmentUI(activeRoom, currentConfig, currentData)}
+                    <div class="mt-10 pt-6 border-t border-slate-100 dark:border-slate-800">
+                        <h3 class="flex items-center gap-2 text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">
+                            <span class="material-symbols-outlined text-base">settings_suggest</span>
+                            単価の調整（管理者・特別設定用）
+                        </h3>
+                        ${renderPriceAdjustmentUI(activeRoom, currentConfig, currentData)}
                     </div>
                 </div>
             </div>
@@ -382,7 +394,6 @@ document.addEventListener('DOMContentLoaded', () => {
             eqs = [...(data.specificEq || []), ...commonEq.filter(ce => !specNames.includes(ce.name))];
         }
 
-        // Hide specific items for specific rooms
         if (roomName === "スインクホール" || roomName === "セミナー室") {
             eqs = eqs.filter(e => e.name !== "司会者台");
         }
@@ -393,17 +404,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     <thead>
                         <tr class="border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase text-slate-400">
                             <th class="pb-2">設備名</th>
-                            <th class="pb-2 text-right">料金/区分</th>
+                            <th class="pb-2 text-right">単価調整</th>
                             <th class="pb-2 text-center">午前</th>
                             <th class="pb-2 text-center">午後</th>
                             <th class="pb-2 text-center">夜間</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50 dark:divide-slate-800/50">
-                        ${eqs.map(eq => `
+                        ${eqs.map(eq => {
+                            const currentPrice = getPrice(roomName, `eq_${eq.name}`, eq.price);
+                            return `
                             <tr>
                                 <td class="py-2 pr-2 font-medium">${eq.name} <span class="text-[10px] text-slate-400">(最大${eq.max})</span></td>
-                                <td class="py-2 px-1 text-right text-slate-500">¥${eq.price}</td>
+                                <td class="py-2 px-1 text-right">
+                                    <div class="flex items-center justify-end gap-1">
+                                        <span class="text-[10px] text-slate-400">¥</span>
+                                        <input type="number" class="room-price-override w-16 px-1 rounded border-slate-200 text-right text-xs" 
+                                               value="${currentPrice}" data-room="${roomName}" data-field="eq_${eq.name}" />
+                                    </div>
+                                </td>
                                 ${['午前', '午後', '夜間'].map(seg => `
                                     <td class="py-2 px-1 text-center">
                                         <input type="number" class="room-eq-input w-16 px-1 rounded-lg border-slate-200 text-right text-xs" min="0" max="${eq.max}" 
@@ -411,9 +430,65 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </td>
                                 `).join('')}
                             </tr>
-                        `).join('')}
+                        `}).join('')}
                     </tbody>
                 </table>
+            </div>
+        `;
+    }
+
+    function renderPriceAdjustmentUI(roomName, config, data) {
+        if (data.isHourly) {
+            return `
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-medium text-slate-500">一般 単価 (¥/h)</label>
+                        <input type="number" class="room-price-override rounded-lg border-slate-200 text-sm" value="${getPrice(roomName, 'adultRate', data.adultRate)}" data-room="${roomName}" data-field="adultRate" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-medium text-slate-500">小中学生 単価 (¥/h)</label>
+                        <input type="number" class="room-price-override rounded-lg border-slate-200 text-sm" value="${getPrice(roomName, 'childRate', data.childRate)}" data-room="${roomName}" data-field="childRate" />
+                    </div>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-medium text-slate-500">午前 基本料金</label>
+                        <input type="number" class="room-price-override rounded-lg border-slate-200 text-sm" value="${getPrice(roomName, 'baseAm', data.baseAm)}" data-room="${roomName}" data-field="baseAm" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-medium text-slate-500">午後 基本料金</label>
+                        <input type="number" class="room-price-override rounded-lg border-slate-200 text-sm" value="${getPrice(roomName, 'basePm', data.basePm)}" data-room="${roomName}" data-field="basePm" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-medium text-slate-500">夜間 基本料金</label>
+                        <input type="number" class="room-price-override rounded-lg border-slate-200 text-sm" value="${getPrice(roomName, 'baseNight', data.baseNight)}" data-room="${roomName}" data-field="baseNight" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-medium text-slate-500">全日 基本料金</label>
+                        <input type="number" class="room-price-override rounded-lg border-slate-200 text-sm" value="${getPrice(roomName, 'baseAllday', data.baseAllday)}" data-room="${roomName}" data-field="baseAllday" />
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-medium text-slate-500">延長 単価 (¥/h)</label>
+                        <input type="number" class="room-price-override rounded-lg border-slate-200 text-sm" value="${getPrice(roomName, 'extHour', data.extHour)}" data-room="${roomName}" data-field="extHour" />
+                    </div>
+                    ${data.hasHvac ? `
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-medium text-slate-500">冷房 単価 (¥/h)</label>
+                        <input type="number" class="room-price-override rounded-lg border-slate-200 text-sm" value="${getPrice(roomName, 'coolerRate', data.coolerRate)}" data-room="${roomName}" data-field="coolerRate" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-medium text-slate-500">暖房 単価 (¥/h)</label>
+                        <input type="number" class="room-price-override rounded-lg border-slate-200 text-sm" value="${getPrice(roomName, 'heaterRate', data.heaterRate)}" data-room="${roomName}" data-field="heaterRate" />
+                    </div>
+                    ` : ''}
+                </div>
             </div>
         `;
     }
@@ -526,6 +601,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 calculateTotal();
             });
         });
+
+        document.querySelectorAll('.room-price-override').forEach(input => {
+            input.addEventListener('input', () => {
+                const room = input.getAttribute('data-room');
+                const field = input.getAttribute('data-field');
+                const val = parseFloat(input.value);
+                if (!isNaN(val)) {
+                    roomConfigs[room].overrides[field] = val;
+                } else {
+                    delete roomConfigs[room].overrides[field];
+                }
+                calculateTotal();
+            });
+        });
     }
 
     function calculateTotal() {
@@ -539,25 +628,34 @@ document.addEventListener('DOMContentLoaded', () => {
             let roomSubDetails = [];
 
             if (data.isHourly) {
+                const adultRate = getPrice(roomName, 'adultRate', data.adultRate);
+                const childRate = getPrice(roomName, 'childRate', data.childRate);
                 const aH = config.creationHours.adult;
                 const cH = config.creationHours.child;
-                const aT = aH * data.adultRate;
-                const cT = cH * data.childRate;
+                const aT = aH * adultRate;
+                const cT = cH * childRate;
                 roomTotal = aT + cT;
                 if (aH > 0) roomSubDetails.push(`一般 ${aH}h (¥${aT.toLocaleString()})`);
                 if (cH > 0) roomSubDetails.push(`小中学生 ${cH}h (¥${cT.toLocaleString()})`);
             } else {
+                let baseTotal = 0;
+                let segTotals = { am: 0, pm: 0, night: 0 };
                 const hasAm = config.timeSegments.includes('am');
                 const hasPm = config.timeSegments.includes('pm');
                 const hasNight = config.timeSegments.includes('night');
                 const isEffectiveAllday = config.timeSegments.includes('allday') || (hasAm && hasPm && hasNight);
 
+                const baseAm = getPrice(roomName, 'baseAm', data.baseAm);
+                const basePm = getPrice(roomName, 'basePm', data.basePm);
+                const baseNight = getPrice(roomName, 'baseNight', data.baseNight);
+                const baseAllday = getPrice(roomName, 'baseAllday', data.baseAllday);
+
                 if (isEffectiveAllday) {
-                    baseTotal = data.baseAllday;
+                    baseTotal = baseAllday;
                 } else {
-                    if (hasAm) { baseTotal += data.baseAm; segTotals.am = data.baseAm; }
-                    if (hasPm) { baseTotal += data.basePm; segTotals.pm = data.basePm; }
-                    if (hasNight) { baseTotal += data.baseNight; segTotals.night = data.baseNight; }
+                    if (hasAm) { baseTotal += baseAm; segTotals.am = baseAm; }
+                    if (hasPm) { baseTotal += basePm; segTotals.pm = basePm; }
+                    if (hasNight) { baseTotal += baseNight; segTotals.night = baseNight; }
                 }
                 // Extensions
                 let extH = 0;
@@ -566,6 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isAmPm = (hasAm && hasPm) || isEffectiveAllday;
                 const isPmNight = (hasPm && hasNight) || isEffectiveAllday;
 
+                const extHourUnitPrice = getPrice(roomName, 'extHour', data.extHour);
                 for (let key in config.extHours) {
                     const h = config.extHours[key];
                     if (h > 0) {
@@ -579,7 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (key === "夕方延長" && !hasPm && !hasNight && !isEffectiveAllday) continue;
 
                         extH += h;
-                        const fee = data.extHour * h;
+                        const fee = extHourUnitPrice * h;
                         extDetails.push({ name: key, fee: fee });
 
                         if (key.includes('早朝')) segTotals.am += fee;
@@ -587,7 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (key.includes('夕方')) segTotals.night += fee;
                     }
                 }
-                const extTotal = extH * data.extHour;
+                const extTotal = extH * extHourUnitPrice;
                 const basePlusExt = baseTotal + extTotal;
 
                 if (roomName === '創作コーナー') {
@@ -612,8 +711,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (data.hasHvac) {
-                const cT = config.hvac.cooler * data.coolerRate;
-                const hT = config.hvac.heater * data.heaterRate;
+                const coolerRate = getPrice(roomName, 'coolerRate', data.coolerRate);
+                const heaterRate = getPrice(roomName, 'heaterRate', data.heaterRate);
+                const cT = config.hvac.cooler * coolerRate;
+                const hT = config.hvac.heater * heaterRate;
                 if (cT > 0) { roomTotal += cT; roomSubDetails.push(`冷房 ${config.hvac.cooler}h (¥${cT.toLocaleString()})`); }
                 if (hT > 0) { roomTotal += hT; roomSubDetails.push(`暖房 ${config.hvac.heater}h (¥${hT.toLocaleString()})`); }
             }
@@ -625,11 +726,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const [name, seg] = key.split('_');
                     let price = 0;
                     const spec = (data.specificEq || []).find(e => e.name === name);
-                    if (spec) price = spec.price;
-                    else {
-                        const comm = commonEq.find(e => e.name === name);
-                        if (comm) price = comm.price;
-                    }
+                    const defaultPrice = spec ? spec.price : (commonEq.find(e => e.name === name)?.price || 0);
+                    price = getPrice(roomName, `eq_${name}`, defaultPrice);
                     roomEqCost += price * qty;
                 }
             }
