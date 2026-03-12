@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <select class="room-admission-select w-full rounded-lg border-slate-200 bg-white text-xs" data-room="${roomName}" data-seg="${seg.id}">
                             <option value="1.0" ${config.admissionMults[seg.id] == 1.0 ? 'selected' : ''}>なし</option>
                             <option value="1.3" ${config.admissionMults[seg.id] == 1.3 ? 'selected' : ''}>1,000円未満</option>
-                            <option value="1.5" ${config.admissionMults[seg.id] == 1.5 ? 'selected' : ''}>1,000-3,000円</option>
+                            <option value="1.5" ${config.admissionMults[seg.id] == 1.5 ? 'selected' : ''}>1,000以上3,000円未満</option>
                             <option value="2.0" ${config.admissionMults[seg.id] == 2.0 ? 'selected' : ''}>3,000円以上</option>
                         </select>
                     </div>
