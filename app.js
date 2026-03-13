@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const commonEq = [
         { name: "演台", price: 360, max: 2 },
-        { name: "司会者台", price: 0, max: 2 },
+        { name: "司会者台 (ワイヤレスマイク2本付き)", price: 0, max: 2 },
         { name: "視聴覚装置", price: 1500, max: 2 },
         { name: "持込器具電源", price: 100, max: 99 },
         { name: "ノート型パソコン (Officeあり)", price: 520, max: 4 },
@@ -103,12 +103,20 @@ document.addEventListener('DOMContentLoaded', () => {
             timeSegments: data.isHourly ? [] : ["am"],
             extHours: { "早朝延長": 0, "昼間延長": 0, "夕方延長": 0 },
             creationHours: { adult: 0, child: 0 },
+            admissionFee: 0,
             admissionMult: 1.0,
             hvac: { cooler: 0, heater: 0 },
             equipment: {}, // { name_segment: qty }
             overrides: {},  // { fieldName: value }
             performanceTime: { start: "09:00", end: "21:30" }
         };
+    }
+
+    function calculateAdmissionMult(fee) {
+        if (fee <= 0) return 1.0;
+        if (fee < 1000) return 1.3;
+        if (fee <= 3000) return 1.5;
+        return 2.0;
     }
 
     const timeRanges = {
@@ -254,6 +262,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         </button>
                     </div>
 
+                    <div id="section-time-${activeRoom}" class="mb-10">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">1. 利用時間の指定</h3>
+                        ${currentData.isHourly ? renderHourlyTimeUI(activeRoom, currentConfig) : renderNormalTimeUI(activeRoom, currentConfig)}
+                    </div>
+
+                    <div class="mb-10">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">2. 入場料等による加算</h3>
+                        ${activeRoom === '創作コーナー' ? `
+                            <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 text-slate-500 text-sm">この施設では入場料等による加算は発生しません。</div>
+                        ` : renderAdmissionUI(activeRoom, currentConfig)}
+                    </div>
+
                     <div class="mb-10 p-5 bg-primary/5 rounded-2xl border border-primary/10 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
                         <h3 class="flex items-center gap-2 text-sm font-bold text-primary mb-4">
                             <span class="material-symbols-outlined text-lg">schedule</span>
@@ -277,18 +297,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </select>
                             </div>
                         </div>
-                    </div>
-
-                    <div id="section-time-${activeRoom}" class="mb-10">
-                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">1. 利用時間の指定</h3>
-                        ${currentData.isHourly ? renderHourlyTimeUI(activeRoom, currentConfig) : renderNormalTimeUI(activeRoom, currentConfig)}
-                    </div>
-
-                    <div class="mb-10">
-                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">2. 入場料等による加算倍率</h3>
-                        ${activeRoom === '創作コーナー' ? `
-                            <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 text-slate-500 text-sm">この施設では入場料等による加算は発生しません。</div>
-                        ` : renderAdmissionUI(activeRoom, currentConfig)}
                     </div>
 
                     ${currentData.hasHvac ? `
@@ -417,22 +425,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderAdmissionUI(roomName, config) {
-        const options = [
-            { val: 1.0, label: 'なし (1.0倍)' },
-            { val: 1.3, label: '1,000円未満 (1.3倍)' },
-            { val: 1.5, label: '1,000-3,000円 (1.5倍)' },
-            { val: 2.0, label: '3,000円以上 (2.0倍)' }
-        ];
-
         return `
-            <div class="flex flex-col gap-2">
-                <label class="text-xs font-bold text-slate-500 mb-1">入場料等の徴収に伴う割増倍率</label>
-                <select class="room-admission-select w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 text-sm font-medium focus:ring-primary focus:border-primary transition-all" data-room="${roomName}">
-                    ${options.map(opt => `
-                        <option value="${opt.val}" ${Math.abs(config.admissionMult - opt.val) < 0.01 ? 'selected' : ''}>${opt.label}</option>
-                    `).join('')}
-                </select>
-                <p class="text-[10px] text-slate-400 mt-1">※設定された「本番時間」と重なる区分・延長にこの倍率が適用されます。</p>
+            <div class="flex flex-col gap-4">
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-bold text-slate-500 mb-1">最高額の入場料等 (円)</label>
+                    <div class="relative">
+                        <input type="number" class="room-admission-fee-input w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 text-right pr-8 font-medium focus:ring-primary focus:border-primary transition-all" 
+                            data-room="${roomName}" min="0" value="${config.admissionFee || 0}" />
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">円</span>
+                    </div>
+                </div>
+                <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">加算倍率の内訳</p>
+                    <ul class="text-[11px] space-y-1 text-slate-600 dark:text-slate-400">
+                        <li id="adm-rank-10" class="flex justify-between items-center ${config.admissionMult === 1.0 ? 'text-primary font-bold' : ''}">
+                            <span>徴収なし (0円)</span>
+                            <span>1.0倍</span>
+                        </li>
+                        <li id="adm-rank-13" class="flex justify-between items-center ${config.admissionMult === 1.3 ? 'text-primary font-bold' : ''}">
+                            <span>1,000円未満</span>
+                            <span>1.3倍</span>
+                        </li>
+                        <li id="adm-rank-15" class="flex justify-between items-center ${config.admissionMult === 1.5 ? 'text-primary font-bold' : ''}">
+                            <span>1,000円 ～ 3,000円未満</span>
+                            <span>1.5倍</span>
+                        </li>
+                        <li id="adm-rank-20" class="flex justify-between items-center ${config.admissionMult === 2.0 ? 'text-primary font-bold' : ''}">
+                            <span>3,000円以上</span>
+                            <span>2.0倍</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="flex items-center gap-2 p-2 bg-primary/5 rounded-lg border border-primary/10">
+                    <span class="text-xs font-bold text-slate-500">適用倍率:</span>
+                    <span id="adm-mult-val" class="text-sm font-extrabold text-primary">${config.admissionMult.toFixed(1)}倍</span>
+                </div>
             </div>
         `;
     }
@@ -656,11 +683,30 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        document.querySelectorAll('.room-admission-select').forEach(sel => {
-            sel.addEventListener('change', () => {
-                const room = sel.getAttribute('data-room');
-                roomConfigs[room].admissionMult = parseFloat(sel.value);
-                renderRoomConfigs();
+        document.querySelectorAll('.room-admission-fee-input').forEach(input => {
+            input.addEventListener('input', () => {
+                const room = input.getAttribute('data-room');
+                const fee = parseFloat(input.value) || 0;
+                roomConfigs[room].admissionFee = fee;
+                const mult = calculateAdmissionMult(fee);
+                roomConfigs[room].admissionMult = mult;
+
+                // UI Partial Update (to avoid focus loss)
+                const multVal = document.getElementById('adm-mult-val');
+                if (multVal) multVal.textContent = mult.toFixed(1) + '倍';
+
+                ['10', '13', '15', '20'].forEach(r => {
+                    const el = document.getElementById('adm-rank-' + r);
+                    if (el) {
+                        const targetMult = parseFloat(r) / 10;
+                        if (Math.abs(mult - targetMult) < 0.01) {
+                            el.classList.add('text-primary', 'font-bold');
+                        } else {
+                            el.classList.remove('text-primary', 'font-bold');
+                        }
+                    }
+                });
+
                 calculateTotal();
             });
         });
