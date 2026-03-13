@@ -285,16 +285,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="flex items-center gap-4">
                             <div class="flex-1">
                                 <label class="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">Start / 開始</label>
-                                <select class="performance-time-select w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 text-sm font-medium focus:ring-primary focus:border-primary transition-all" data-room="${activeRoom}" data-type="start">
-                                    ${generateTimeOptions(currentConfig.performanceTime.start)}
-                                </select>
+                                <input type="time" class="performance-time-input w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 text-sm font-medium focus:ring-primary focus:border-primary transition-all" data-room="${activeRoom}" data-type="start" value="${currentConfig.performanceTime.start}">
                             </div>
                             <div class="text-slate-300 mt-5 font-light">～</div>
                             <div class="flex-1">
                                 <label class="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">End / 終了</label>
-                                <select class="performance-time-select w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 text-sm font-medium focus:ring-primary focus:border-primary transition-all" data-room="${activeRoom}" data-type="end">
-                                    ${generateTimeOptions(currentConfig.performanceTime.end)}
-                                </select>
+                                <input type="time" class="performance-time-input w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 text-sm font-medium focus:ring-primary focus:border-primary transition-all" data-room="${activeRoom}" data-type="end" value="${currentConfig.performanceTime.end}">
                             </div>
                         </div>
                     </div>
@@ -748,11 +744,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        document.querySelectorAll('.performance-time-select').forEach(sel => {
-            sel.addEventListener('change', () => {
-                const room = sel.getAttribute('data-room');
-                const type = sel.getAttribute('data-type');
-                roomConfigs[room].performanceTime[type] = sel.value;
+        document.querySelectorAll('.performance-time-input').forEach(input => {
+            input.addEventListener('input', () => {
+                const room = input.getAttribute('data-room');
+                const type = input.getAttribute('data-type');
+                roomConfigs[room].performanceTime[type] = input.value;
                 calculateTotal();
             });
         });
