@@ -38,7 +38,7 @@
     <div class="flex flex-col lg:flex-row min-h-screen">
         <!-- Sidebar Navigation -->
         <aside
-            class="w-full lg:w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col z-20">
+            class="hidden lg:flex lg:w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col z-20">
             <div class="p-6 flex items-center gap-3">
                 <div class="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
                     <span class="material-symbols-outlined">analytics</span>
@@ -67,17 +67,20 @@
             <div id="simulator-view" class="absolute inset-0 overflow-y-auto transition-opacity duration-300 z-10">
                 <header
                     class="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md">
-                    <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 lg:px-8">
-                        <div class="flex items-center gap-3">
-                            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white">
-                                <span class="material-symbols-outlined">calculate</span>
+                    <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 lg:px-8 lg:py-3">
+                        <div class="flex items-center gap-2 lg:gap-3">
+                            <div class="flex h-8 w-8 lg:h-10 lg:w-10 items-center justify-center rounded-lg lg:rounded-xl bg-primary text-white">
+                                <span class="material-symbols-outlined text-sm lg:text-base">calculate</span>
                             </div>
                             <div>
                                 <h1
-                                    class="text-lg font-bold leading-tight tracking-tight text-slate-900 dark:text-white">
-                                    大垣市情報工房 利用料金シミュレーター</h1>
-                                <p class="text-xs font-medium text-slate-500 dark:text-slate-400">リアルタイム見積もり</p>
+                                    class="text-sm lg:text-lg font-bold leading-tight tracking-tight text-slate-900 dark:text-white">
+                                    料金シミュレーター</h1>
+                                <p class="hidden lg:block text-xs font-medium text-slate-500 dark:text-slate-400">リアルタイム見積もり</p>
                             </div>
+                        </div>
+                        <div class="flex lg:hidden">
+                            <a href="legal.html" class="text-[10px] font-bold text-slate-400 hover:text-primary transition-colors border border-slate-200 dark:border-slate-800 rounded-full px-3 py-1">利用規約</a>
                         </div>
                     </div>
                 </header>
@@ -211,7 +214,7 @@
         </main>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=20240313"></script>
 </body>
 
 </html>
