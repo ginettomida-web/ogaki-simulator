@@ -324,16 +324,25 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderStepper(id, value, min, max, dataAttrs = '') {
         const isMax = max !== null && value >= max;
         const isMin = value <= min;
+        
+        let customClasses = "";
+        let finalAttrs = dataAttrs;
+        const classMatch = dataAttrs.match(/class=["']([^"']+)["']/);
+        if (classMatch) {
+            customClasses = " " + classMatch[1];
+            finalAttrs = dataAttrs.replace(classMatch[0], "");
+        }
+
         return `
             <div class="flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden shooter-stepper">
                 <button type="button" class="stepper-btn stepper-minus px-1.5 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 disabled:opacity-30 flex items-center justify-center transition-colors" 
-                        ${isMin ? 'disabled' : ''} ${dataAttrs} data-action="minus">
+                        ${isMin ? 'disabled' : ''} ${finalAttrs} data-action="minus">
                     <span class="material-symbols-outlined text-base">remove</span>
                 </button>
-                <input type="number" id="${id}" class="stepper-input w-10 border-0 bg-transparent text-center text-sm font-bold focus:ring-0 p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                       value="${value}" min="${min}" ${max !== null ? `max="${max}"` : ''} ${dataAttrs} />
+                <input type="number" id="${id}" class="stepper-input w-10 border-0 bg-transparent text-center text-sm font-bold focus:ring-0 p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none${customClasses}" 
+                       value="${value}" min="${min}" ${max !== null ? `max="${max}"` : ''} ${finalAttrs} />
                 <button type="button" class="stepper-btn stepper-plus px-1.5 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 disabled:opacity-30 flex items-center justify-center transition-colors" 
-                        ${isMax ? 'disabled' : ''} ${dataAttrs} data-action="plus">
+                        ${isMax ? 'disabled' : ''} ${finalAttrs} data-action="plus">
                     <span class="material-symbols-outlined text-base">add</span>
                 </button>
             </div>
