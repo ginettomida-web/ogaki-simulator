@@ -201,12 +201,29 @@
                                         </div>
                                     </div>
                                     <div class="mt-8 flex flex-col gap-3">
+                                        <button id="copy-estimate-btn"
+                                            class="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 dark:bg-slate-100 py-3 text-sm font-bold text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors shadow-lg">
+                                            <span class="material-symbols-outlined text-base">content_copy</span>見積結果をコピー
+                                        </button>
                                         <p class="text-[10px] text-slate-400 text-center">表示価格は税込の概算であり、実際の請求額と異なる場合があります。</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </aside>
+                </div>
+            </div>
+
+            <!-- Mobile Floating Total Bar -->
+            <div id="mobile-total-bar" class="lg:hidden fixed bottom-0 left-0 right-0 z-[60] p-4 translate-y-full transition-transform duration-300">
+                <div class="mx-auto max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-[0_-8px_30px_rgb(0,0,0,0.12)] border border-slate-100 dark:border-slate-800 p-4 flex items-center justify-between">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">現在の合計</span>
+                        <span class="text-2xl font-black text-primary leading-none" id="mobile-total-price">¥0</span>
+                    </div>
+                    <button id="mobile-scroll-to-result" class="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary/20 active:scale-95 transition-all">
+                        明細を見る <span class="material-symbols-outlined text-sm">arrow_upward</span>
+                    </button>
                 </div>
             </div>
 

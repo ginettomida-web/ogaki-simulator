@@ -275,13 +275,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
 
                     <div class="mb-10 p-5 bg-primary/5 rounded-2xl border border-primary/10 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
-                        <h3 class="flex items-center gap-2 text-sm font-bold text-primary mb-4">
+                        <h3 class="flex items-center gap-2 text-sm font-bold text-primary mb-2">
                             <span class="material-symbols-outlined text-lg">schedule</span>
                             本番時間の設定
                         </h3>
                         <p class="text-[10px] text-slate-500 mb-4 leading-relaxed">
                             ※本番時間と重なる区分・延長時間にのみ「入場料等による割増」が適用されます。
                         </p>
+                        
+                        <!-- Timeline Visualization -->
+                        <div id="timeline-container-${activeRoom}" class="mb-6 bg-white dark:bg-slate-900 rounded-xl p-3 border border-primary/10">
+                            ${renderTimeline(activeRoom)}
+                        </div>
+
                         <div class="flex items-center gap-4">
                             <div class="flex-1">
                                 <label class="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">Start / 開始</label>
@@ -826,12 +832,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function calculateTotal() {
         let grandTotal = 0;
         let detailsHtml = '';
+        let fullSummaryText = '【大垣市情報工房 利用料金見積（概算）】\n\n';
 
         selectedRooms.forEach(roomName => {
             const data = pricingData[roomName];
             const config = roomConfigs[roomName];
             let roomTotal = 0;
             let roomSubDetails = [];
+
+            fullSummaryText += `■ ${roomName}\n`;
 
             if (data.isHourly) {
                 const adultRate = getPrice(roomName, 'adultRate', data.adultRate);
@@ -841,8 +850,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const aT = aH * adultRate;
                 const cT = cH * childRate;
                 roomTotal = aT + cT;
-                if (aH > 0) roomSubDetails.push(`一般 ${aH}h (¥${aT.toLocaleString()})`);
-                if (cH > 0) roomSubDetails.push(`小中学生 ${cH}h (¥${cT.toLocaleString()})`);
+                if (aH > 0) {
+                    roomSubDetails.push(`一般 ${aH}h (¥${aT.toLocaleString()})`);
+                    fullSummaryText += ` ・一般 ${aH}h: ¥${aT.toLocaleString()}\n`;
+                }
+                if (cH > 0) {
+                    roomSubDetails.push(`小中学生 ${cH}h (¥${cT.toLocaleString()})`);
+                    fullSummaryText += ` ・小中学生 ${cH}h: ¥${cT.toLocaleString()}\n`;
+                }
             } else {
                 let baseTotal = 0;
                 let segTotals = { am: 0, pm: 0, night: 0 };
@@ -851,26 +866,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const hasNight = config.timeSegments.includes('night');
                 const isEffectiveAllday = config.timeSegments.includes('allday') || (hasAm && hasPm && hasNight);
 
-                // Determine unit prices based on mode
                 const bAm = getPrice(roomName, isEffectiveAllday ? 'alldayAm' : 'baseAm', isEffectiveAllday ? data.alldayAm : data.baseAm);
                 const bPm = getPrice(roomName, isEffectiveAllday ? 'alldayPm' : 'basePm', isEffectiveAllday ? data.alldayPm : data.basePm);
                 const bNight = getPrice(roomName, isEffectiveAllday ? 'alldayNight' : 'baseNight', isEffectiveAllday ? data.alldayNight : data.baseNight);
-                const bAllday = getPrice(roomName, 'baseAllday', data.baseAllday);
                 const extHourUnitPrice = getPrice(roomName, 'extHour', data.extHour);
 
-                // Performance time range
                 const perfRange = config.performanceTime;
-
-                // 1. Base Segments Calculation with Overlap Surcharge
                 const mult = config.admissionMult;
+
                 if (isEffectiveAllday) {
-                    // All-day mode: Check each segment for overlap with Performance Time
                     const finalAm = isOverlap(perfRange, timeRanges["am"]) ? Math.round(bAm * mult) : bAm;
                     const finalPm = isOverlap(perfRange, timeRanges["pm"]) ? Math.round(bPm * mult) : bPm;
                     const finalNight = isOverlap(perfRange, timeRanges["night"]) ? Math.round(bNight * mult) : bNight;
-
                     baseTotal = finalAm + finalPm + finalNight;
-
                     if (finalAm > bAm) roomSubDetails.push(`午前割増(全日): ¥${(finalAm - bAm).toLocaleString()}`);
                     if (finalPm > bPm) roomSubDetails.push(`午後割増(全日): ¥${(finalPm - bPm).toLocaleString()}`);
                     if (finalNight > bNight) roomSubDetails.push(`夜間割増(全日): ¥${(finalNight - bNight).toLocaleString()}`);
@@ -895,7 +903,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // 2. Extensions Calculation with Overlap Surcharge
                 let extTotal = 0;
                 const isAmPm = (hasAm && hasPm) || isEffectiveAllday;
                 const isPmNight = (hasPm && hasNight) || isEffectiveAllday;
@@ -903,34 +910,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (let key in config.extHours) {
                     const h = config.extHours[key];
                     if (h > 0) {
-                        // Consecutivity Skip Logic
                         if (key === "昼間延長" && isAmPm) continue;
                         if (key === "夕方延長" && isPmNight) continue;
-
-                        // Availability Check (Contiguity)
                         if (key === "早朝延長" && !hasAm && !isEffectiveAllday) continue;
                         if (key === "昼間延長" && !hasAm && !hasPm && !isEffectiveAllday) continue;
                         if (key === "夕方延長" && !hasPm && !hasNight && !isEffectiveAllday) continue;
 
                         const rawFee = extHourUnitPrice * h;
                         let finalFee = rawFee;
-
-                        // Surcharge Check for Extensions
-                        // Exception: No surcharge for midday/evening extensions in All-day mode
                         const isNoSurchargeExt = isEffectiveAllday && (key === "昼間延長" || key === "夕方延長");
-                        
                         if (!isNoSurchargeExt && isOverlap(perfRange, timeRanges[key])) {
                             finalFee = Math.round(rawFee * mult);
                             if (finalFee > rawFee) roomSubDetails.push(`${key}割増: ¥${(finalFee - rawFee).toLocaleString()}`);
                         }
-
                         extTotal += finalFee;
                         roomSubDetails.push(`${key} ${h}h: ¥${finalFee.toLocaleString()}`);
                     }
                 }
 
                 roomTotal = baseTotal + extTotal;
-                if (roomTotal > 0) roomSubDetails.unshift(`基本+延長: ¥${roomTotal.toLocaleString()}`);
+                if (roomTotal > 0) {
+                    roomSubDetails.unshift(`基本+延長: ¥${roomTotal.toLocaleString()}`);
+                    fullSummaryText += ` ・施設利用料（割増含）: ¥${roomTotal.toLocaleString()}\n`;
+                }
             }
 
             if (data.hasHvac) {
@@ -938,8 +940,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const heaterRate = getPrice(roomName, 'heaterRate', data.heaterRate);
                 const cT = config.hvac.cooler * coolerRate;
                 const hT = config.hvac.heater * heaterRate;
-                if (cT > 0) { roomTotal += cT; roomSubDetails.push(`冷房 ${config.hvac.cooler}h (¥${cT.toLocaleString()})`); }
-                if (hT > 0) { roomTotal += hT; roomSubDetails.push(`暖房 ${config.hvac.heater}h (¥${hT.toLocaleString()})`); }
+                if (cT > 0) { 
+                    roomTotal += cT; 
+                    roomSubDetails.push(`冷房 ${config.hvac.cooler}h (¥${cT.toLocaleString()})`);
+                    fullSummaryText += ` ・冷房費: ¥${cT.toLocaleString()}\n`;
+                }
+                if (hT > 0) { 
+                    roomTotal += hT; 
+                    roomSubDetails.push(`暖房 ${config.hvac.heater}h (¥${hT.toLocaleString()})`);
+                    fullSummaryText += ` ・暖房費: ¥${hT.toLocaleString()}\n`;
+                }
             }
 
             let roomEqCost = 0;
@@ -955,7 +965,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             roomTotal += roomEqCost;
-            if (roomEqCost > 0) roomSubDetails.push(`附属設備: ¥${roomEqCost.toLocaleString()}`);
+            if (roomEqCost > 0) {
+                roomSubDetails.push(`附属設備: ¥${roomEqCost.toLocaleString()}`);
+                fullSummaryText += ` ・附属設備費: ¥${roomEqCost.toLocaleString()}\n`;
+            }
+
+            fullSummaryText += ` [小計: ¥${roomTotal.toLocaleString()}]\n\n`;
 
             if (roomTotal > 0) {
                 grandTotal += roomTotal;
@@ -966,12 +981,116 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
             }
+
+            // Update Timeline for the active room or if it's the only one
+            const timelineContainer = document.getElementById(`timeline-container-${roomName}`);
+            if (timelineContainer) {
+                timelineContainer.innerHTML = renderTimeline(roomName);
+            }
         });
+
+        fullSummaryText += `--------------------\n`;
+        fullSummaryText += `合計金額 (税込): ¥${grandTotal.toLocaleString()}\n`;
+        fullSummaryText += `\n※本見積は概算です。正確な料金は窓口でご確認ください。\n`;
 
         simDetailsListEl.innerHTML = detailsHtml || '<div class="text-slate-400 text-center py-8">施設と条件を選択してください</div>';
         simTotalPriceEl.textContent = `¥${grandTotal.toLocaleString()}`;
-        simTotalPriceEl.setAttribute('data-value', grandTotal);
+        
+        // Mobile bar update
+        const mobTotalBar = document.getElementById('mobile-total-bar');
+        const mobPrice = document.getElementById('mobile-total-price');
+        if (mobPrice) mobPrice.textContent = `¥${grandTotal.toLocaleString()}`;
+        if (mobTotalBar) {
+            if (grandTotal > 0) {
+                mobTotalBar.classList.remove('translate-y-full');
+            } else {
+                mobTotalBar.classList.add('translate-y-full');
+            }
+        }
+
+        // Add copy event
+        const copyBtn = document.getElementById('copy-estimate-btn');
+        if (copyBtn) {
+            copyBtn.onclick = () => {
+                navigator.clipboard.writeText(fullSummaryText).then(() => {
+                    const originalText = copyBtn.innerHTML;
+                    copyBtn.innerHTML = '<span class="material-symbols-outlined text-base">check</span>コピーしました！';
+                    copyBtn.classList.replace('bg-slate-900', 'bg-emerald-600');
+                    setTimeout(() => {
+                        copyBtn.innerHTML = originalText;
+                        copyBtn.classList.replace('bg-emerald-600', 'bg-slate-900');
+                    }, 2000);
+                });
+            };
+        }
     }
+
+    function renderTimeline(roomName) {
+        const config = roomConfigs[roomName];
+        if (!config || pricingData[roomName].isHourly) return '';
+        
+        const startTotal = timeToMinutes("09:00");
+        const endTotal = timeToMinutes("21:30");
+        const totalDuration = endTotal - startTotal;
+
+        const getPos = (timeStr) => {
+            const mins = timeToMinutes(timeStr);
+            return Math.max(0, Math.min(100, ((mins - startTotal) / totalDuration) * 100));
+        };
+
+        const segments = [
+            { id: 'am', color: 'bg-blue-400/20', border: 'border-blue-400/30' },
+            { id: 'pm', color: 'bg-emerald-400/20', border: 'border-emerald-400/30' },
+            { id: 'night', color: 'bg-purple-400/20', border: 'border-purple-400/30' }
+        ];
+
+        return `
+            <div class="relative w-full h-12 flex flex-col pt-4">
+                <div class="absolute -top-1 left-0 right-0 flex justify-between px-1">
+                    <span class="text-[9px] font-bold text-slate-300">9:00</span>
+                    <span class="text-[9px] font-bold text-slate-300">12:00</span>
+                    <span class="text-[9px] font-bold text-slate-300">17:00</span>
+                    <span class="text-[9px] font-bold text-slate-300">21:30</span>
+                </div>
+                
+                <div class="relative w-full h-5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex border border-slate-200 dark:border-slate-700">
+                    ${segments.map(s => {
+                        const range = timeRanges[s.id];
+                        const left = getPos(range.start);
+                        const width = getPos(range.end) - left;
+                        const isSelected = config.timeSegments.includes(s.id) || config.timeSegments.includes('allday');
+                        return `
+                            <div class="absolute top-0 bottom-0 ${isSelected ? s.color : 'bg-transparent'} border-x ${s.border} transition-colors" 
+                                 style="left: ${left}%; width: ${width}%;"></div>
+                        `;
+                    }).join('')}
+
+                    <div class="absolute top-1.5 bottom-1.5 bg-primary/80 rounded-full z-10 transition-all shadow-[0_0_8px_rgba(37,99,235,0.4)]"
+                         style="left: ${getPos(config.performanceTime.start)}%; width: ${getPos(config.performanceTime.end) - getPos(config.performanceTime.start)}%;">
+                    </div>
+                </div>
+
+                <div class="mt-2 flex items-center justify-center gap-4">
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-3 h-1.5 bg-primary/80 rounded-full"></div>
+                        <span class="text-[10px] text-slate-500 font-bold">本番時間</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-2.5 h-2.5 ${segments[0].color} border ${segments[0].border} rounded-sm"></div>
+                        <span class="text-[10px] text-slate-500 font-bold">選択区分</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Scroll to result button listener
+    document.getElementById('mobile-scroll-to-result')?.addEventListener('click', () => {
+        const target = document.querySelector('.lg\\:w-1\\/3');
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
 
     const resetBtn = document.getElementById('reset-inputs-btn');
     if (resetBtn) {
@@ -987,7 +1106,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Initialize UI
     updateRoomButtonsUI();
     renderRoomConfigs();
     calculateTotal();
