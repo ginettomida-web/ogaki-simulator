@@ -450,7 +450,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         const overlap = isOverlap(c.performanceTime, timeRanges[sk]);
                         const final = overlap ? truncateTo10(fee * c.admissionMult) : fee;
                         baseT += final;
-                        if (overlap && c.admissionMult > 1) details.push(`${sk}割増: ¥${(final - fee).toLocaleString()}`);
+                        details.push(`${sk}: ¥${final.toLocaleString()}${overlap && c.admissionMult > 1 ? ` (割増済)` : ''}`);
+                        summary += ` ・${sk}: ¥${final.toLocaleString()}\n`;
                     }
                 });
                 let extT = 0;
@@ -463,10 +464,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         const raw = d.extHour;
                         const final = (!isAuto && isOverlap(c.performanceTime, timeRanges[ek])) ? truncateTo10(raw * c.admissionMult) : raw;
                         extT += isAuto ? 0 : final;
-                        if (!isAuto) { details.push(`${ek}: ¥${final.toLocaleString()}`); if (final > raw) details.push(`${ek}割増分: ¥${(final - raw).toLocaleString()}`); }
+                        if (!isAuto) { 
+                            details.push(`${ek}: ¥${final.toLocaleString()}${!isAuto && isOverlap(c.performanceTime, timeRanges[ek]) && c.admissionMult > 1 ? ` (割増済)` : ''}`); 
+                            summary += ` ・${ek}: ¥${final.toLocaleString()}\n`;
+                        }
                     }
                 });
-                roomTotal = baseT + extT; summary += ` ・施設利用料: ¥${roomTotal.toLocaleString()}\n`;
+                roomTotal = baseT + extT;
             }
 
             if (d.hasHvac) {
